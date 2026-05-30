@@ -33,10 +33,14 @@ prompt_cidade = PromptTemplate(
 
 prompt_restaurantes = PromptTemplate(
     template = """
-    Sugira populares entre locais em {cidade}.
+    Sugira restaurantes populares entre locais em {cidade}.
     {formato_de_saida}
     """,
     partial_variables={"formato_de_saida": parseador_restaurantes.get_format_instructions()}
+)
+
+prompt_cultural = PromptTemplate(
+    template="Sugira atividades e locais culturais em {cidade}"
 )
 
 modelo = ChatOpenAI(
@@ -45,14 +49,11 @@ modelo = ChatOpenAI(
     api_key=api_key
 )
 
-prompt_cultural = PromptTemplate(
-    template="Sugira atividades e locais culturais em {cidade}"
-)
-
 cadeia_1 = prompt_cidade | modelo | parseador_destino
 cadeia_2 = prompt_restaurantes | modelo | parseador_restaurantes
-cadeia_3 = prompt_cultural | modelo | StrOutputParser
+cadeia_3 = prompt_cultural | modelo | StrOutputParser()
 
+#filtramos a saída da cadeia_1 para que a cadeia_2 receba apenas o que precisa
 cadeia = (cadeia_1 | cadeia_2 | cadeia_3)
 
 resposta = cadeia.invoke(

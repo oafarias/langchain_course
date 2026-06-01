@@ -176,3 +176,74 @@ for uma_pergunta in lista_perguntas:
     print("IA: ", resposta, "\n")
 
 ```
+## 9. Orquestração de Assistentes Sem LangGraph
+
+A orquestração permite criar sistemas que direcionam consultas para especialistas específicos com base no contexto da pergunta do usuário.
+
+### Prompts Especializados
+
+Cada consultor possui um prompt específico que define sua identidade e área de expertise:
+
+```python
+prompt_consultor_praia = ChatPromptTemplate.from_messages(
+    [
+        ("system", "Apresente-se como Sra Praia. Você é uma especialista em viagens com destinos para praia."),
+        ("human", "{query}")
+    ]
+)
+
+prompt_consultor_montanha = ChatPromptTemplate.from_messages(
+    [
+        ("system", "Apresente-se como Sr Montanha. Você é um especialista em viagens com destinos para montanhas e atividades radicais."),
+        ("human", "{query}")
+    ]
+)
+```
+
+### Cadeias Especializadas
+
+Cada consultor possui sua própria cadeia, permitindo respostas contextualizadas:
+
+```python
+cadeia_praia = prompt_consultor_praia | modelo | StrOutputParser()
+cadeia_montanha = prompt_consultor_montanha | modelo | StrOutputParser()
+```
+
+### Roteador com Saída Estruturada
+
+O roteador utiliza `TypedDict` para garantir que a decisão seja sempre um dos destinos válidos:
+
+```python
+from typing import Literal, TypedDict
+
+class Rota(TypedDict):
+    destino: Literal["praia", "montanha"]
+
+prompt_roteador = ChatPromptTemplate.from_messages(
+    [
+        ("system", "Responda apenas com 'praia' ou 'montanha'"),
+        ("human", "{query}")
+    ]
+)
+
+roteador = prompt_roteador | modelo.with_structured_output(Rota)
+```
+
+### Função de Resposta Dinâmica
+
+A função `responda` orquestra todo o fluxo, decidindo qual cadeia executar:
+
+```python
+def responda(pergunta: str):
+    rota = roteador.invoke({"query": pergunta})["destino"]
+    if rota == "praia":
+        return cadeia_praia.invoke({"query": pergunta})
+    return cadeia_montanha.invoke({"query": pergunta})
+```
+
+### Conceitos-Chave da Orquestração
+
+* **Roteamento Inteligente:** O sistema analisa a pergunta e direciona para o especialista mais apropriado.
+* **Prompts Especializados:** Cada consultor tem instruções específicas que definem seu comportamento e identidade.
+* **Saída Estruturada:** O uso de `with_structured_output()` garante que o roteador sempre retorne um valor válido.
+* **Decisão em Tempo de Execução:** A escolha da cadeia ocorre dinamicamente baseada na análise do roteador.
